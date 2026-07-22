@@ -2,7 +2,7 @@ use clap::Parser;
 use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1;
 
 #[derive(Parser)]
-#[command(name = "wkboverlay", about = "Keyboard overlay for wlroots Wayland compositors")]
+#[command(name = "khudium", about = "Keyboard overlay for wlroots Wayland compositors")]
 pub struct Args {
     /// Gap between keys in pixels
     #[arg(long, default_value = "4")]

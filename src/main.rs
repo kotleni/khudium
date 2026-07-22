@@ -166,7 +166,7 @@ fn main() {
         &surface,
         None,
         zwlr_layer_shell_v1::Layer::Overlay,
-        "wkboverlay".to_string(),
+        "khudium".to_string(),
         &qh,
         (),
     );

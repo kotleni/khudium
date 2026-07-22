@@ -311,6 +311,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
+name = "khudium"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "evdev",
+ "fontdue",
+ "nix 0.29.0",
+ "tempfile",
+ "tiny-skia",
+ "wayland-client",
+ "wayland-protocols 0.31.2",
+ "wayland-protocols-wlr",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.188"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -686,21 +701,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
 dependencies = [
  "windows-link",
-]
-
-[[package]]
-name = "wkboverlay"
-version = "0.1.0"
-dependencies = [
- "clap",
- "evdev",
- "fontdue",
- "nix 0.29.0",
- "tempfile",
- "tiny-skia",
- "wayland-client",
- "wayland-protocols 0.31.2",
- "wayland-protocols-wlr",
 ]
 
 [[package]]

@@ -5,7 +5,7 @@
 khudium [OPTIONS]
 ```
 
-The overlay reads the current keyboard layout from `localectl` and renders it as a transparent overlay on screen.
+The overlay auto-detects your keyboard layout from Sway, Hyprland, or XKB environment variables, and renders it as a transparent overlay on screen.
 
 ## Options
 | Flag | Default | Description |
@@ -22,7 +22,7 @@ The overlay reads the current keyboard layout from `localectl` and renders it as
 
 ```
 khudium --place top-left
-khudium --place bottom-center
+khudium --place bottom-left
 ```
 
 ## Split keyboards
