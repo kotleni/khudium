@@ -14,40 +14,58 @@ use crate::stats::TypingStats;
 const BASE_KEY_UNIT: f32 = 36.0;
 const BASE_FONT_SIZE: f32 = 12.0;
 const STATS_GAP: f32 = 8.0;
+const SPLIT_GAP_FACTOR: f32 = 3.0;
+const SPLIT_AFTER_KEY_INDEX: usize = 6;
 
 pub struct RenderMetrics {
     pub key_unit: f32,
     pub font_size: f32,
     pub padding: f32,
     pub alpha: f32,
+    pub split: bool,
 }
 
 impl RenderMetrics {
-    pub fn new(scale: f32, padding: u32, alpha: f32) -> Self {
+    pub fn new(scale: f32, padding: u32, alpha: f32, split: bool) -> Self {
         Self {
             key_unit: BASE_KEY_UNIT * scale,
             font_size: BASE_FONT_SIZE * scale,
             padding: padding as f32,
             alpha,
+            split,
         }
     }
 }
 
 pub fn load_font() -> fontdue::Font {
     let paths = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         "/usr/share/fonts/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/google-noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/TTF/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/croscore/Arimo-Regular.ttf",
+        "/usr/share/fonts/roboto/Roboto-Regular.ttf",
+        "/usr/share/fonts/truetype/roboto/Roboto-Regular.ttf",
+        "/usr/share/fonts/ubuntu-font-family/Ubuntu-R.ttf",
         "/usr/share/fonts/gnu-free/FreeSans.ttf",
+        "/usr/share/fonts/cascadia-code/CascadiaCode-Regular.ttf",
+        "/usr/share/fonts/TTF/FiraCode-Regular.ttf",
+        "/usr/share/fonts/fira-code-fonts/FiraCode-Regular.ttf",
+        "/usr/share/fonts/jetbrains-mono/JetBrainsMono-Regular.ttf",
+        "/usr/share/fonts/truetype/jetbrains/JetBrainsMono-Regular.ttf",
+        "/usr/share/fonts/hack/TTF/Hack-Regular.ttf",
+        "/usr/share/fonts/truetype/hack/Hack-Regular.ttf",
+        "/usr/share/fonts/adwaita/AdwaitaSans-Regular.ttf",
     ];
     for path in &paths {
         if let Ok(data) = std::fs::read(path) {
             return fontdue::Font::from_bytes(&data[..], fontdue::FontSettings::default()).unwrap();
         }
     }
-    panic!("No font found. Install DejaVu Sans or Liberation Sans.");
+    panic!("No font found. Install a font: pacman -S ttf-dejavu ttf-liberation noto-fonts");
 }
 
 pub fn calculate_dimensions(
@@ -55,12 +73,19 @@ pub fn calculate_dimensions(
     metrics: &RenderMetrics,
 ) -> (u32, u32) {
     let pad = metrics.padding;
+    let split_gap = if metrics.split {
+        SPLIT_GAP_FACTOR * metrics.key_unit
+    } else {
+        0.0
+    };
     let max_width = layout
         .rows
         .iter()
         .map(|row| {
-            row.iter().map(|k| k.width * metrics.key_unit).sum::<f32>()
-                + (row.len() as f32 - 1.0) * pad
+            let row_key_units: f32 = row.iter().map(|k| k.width).sum();
+            let row_width = row_key_units * metrics.key_unit + (row.len() as f32 - 1.0) * pad;
+            let has_split = metrics.split && row.len() > SPLIT_AFTER_KEY_INDEX;
+            row_width + if has_split { split_gap } else { 0.0 }
         })
         .fold(0.0f32, f32::max);
     let keyboard_height = layout.rows.len() as f32 * metrics.key_unit
@@ -101,29 +126,36 @@ fn render_keyboard(
     metrics: &RenderMetrics,
 ) {
     let pad = metrics.padding;
+    let split_gap = if metrics.split {
+        SPLIT_GAP_FACTOR * metrics.key_unit
+    } else {
+        0.0
+    };
     let stats_gap = STATS_GAP * (metrics.key_unit / BASE_KEY_UNIT);
     let mut y = pad + metrics.font_size + stats_gap;
 
     for row in &layout.rows {
         let mut x = pad;
-        for key in row {
+        let mut split_applied = false;
+
+        for (i, key) in row.iter().enumerate() {
             let key_width = key.width * metrics.key_unit;
             let key_height = metrics.key_unit;
 
+            if metrics.split && !split_applied && i >= SPLIT_AFTER_KEY_INDEX {
+                x += split_gap;
+                split_applied = true;
+            }
+
             if !key.label.is_empty() {
                 let is_pressed = key.code != 0 && pressed_keys.contains(&key.code);
-                draw_key(
-                    pixmap,
-                    x,
-                    y,
-                    key_width,
-                    key_height,
-                    key.label,
-                    is_pressed,
+                let style = KeyStyle {
                     font,
-                    metrics.font_size,
-                    metrics.alpha,
-                );
+                    font_size: metrics.font_size,
+                    alpha: metrics.alpha,
+                };
+                let key_rect = Rect::from_xywh(x, y, key_width, key_height).unwrap();
+                draw_key(pixmap, key_rect, key.label, is_pressed, &style);
             }
 
             x += key_width + pad;
@@ -158,19 +190,20 @@ fn render_stats_bar(
     );
 }
 
-fn draw_key(
-    pixmap: &mut Pixmap,
-    x: f32,
-    y: f32,
-    width: f32,
-    height: f32,
-    label: &str,
-    pressed: bool,
-    font: &fontdue::Font,
+struct KeyStyle<'a> {
+    font: &'a fontdue::Font,
     font_size: f32,
     alpha: f32,
+}
+
+fn draw_key(
+    pixmap: &mut Pixmap,
+    rect: Rect,
+    label: &str,
+    pressed: bool,
+    style: &KeyStyle,
 ) {
-    let scale = |base: u8| -> u8 { (base as f32 * alpha).round() as u8 };
+    let scale = |base: u8| -> u8 { (base as f32 * style.alpha).round() as u8 };
     let (bg, border, text) = if pressed {
         (
             Color::from_rgba8(74, 158, 255, scale(200)),
@@ -184,8 +217,6 @@ fn draw_key(
             Color::from_rgba8(200, 200, 200, scale(255)),
         )
     };
-
-    let rect = Rect::from_xywh(x, y, width, height).unwrap();
 
     let bg_paint = Paint {
         shader: tiny_skia::Shader::SolidColor(bg),
@@ -210,10 +241,10 @@ fn draw_key(
     draw_text(
         pixmap,
         label,
-        x + width / 2.0,
-        y + height / 2.0,
-        font,
-        font_size,
+        rect.x() + rect.width() / 2.0,
+        rect.y() + rect.height() / 2.0,
+        style.font,
+        style.font_size,
         text,
     );
 }

@@ -144,7 +144,7 @@ fn main() {
         fx_keys: args.fx_keys,
     };
     let kb_layout = layout::Layouts::get(&initial_layout_name, layout_opts);
-    let metrics = RenderMetrics::new(args.scale, args.paddings, args.alpha);
+    let metrics = RenderMetrics::new(args.scale, args.paddings, args.alpha, args.split);
     let font = load_font();
     let (width, height) = calculate_dimensions(&kb_layout, &metrics);
 
