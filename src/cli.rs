@@ -24,9 +24,9 @@ pub struct Args {
     #[arg(long, default_value = "false")]
     pub fx_keys: bool,
 
-    /// Split keyboard into left/right halves (ergonomic split style)
-    #[arg(long, default_value = "false")]
-    pub split: bool,
+    /// Split keyboard layout (lily58, corne, cheapino)
+    #[arg(long)]
+    pub split: Option<String>,
 }
 
 pub fn parse_anchor(place: &str) -> zwlr_layer_surface_v1::Anchor {

@@ -14,25 +14,21 @@ use crate::stats::TypingStats;
 const BASE_KEY_UNIT: f32 = 36.0;
 const BASE_FONT_SIZE: f32 = 12.0;
 const STATS_GAP: f32 = 8.0;
-const SPLIT_GAP_FACTOR: f32 = 3.0;
-const SPLIT_AFTER_KEY_INDEX: usize = 6;
 
 pub struct RenderMetrics {
     pub key_unit: f32,
     pub font_size: f32,
     pub padding: f32,
     pub alpha: f32,
-    pub split: bool,
 }
 
 impl RenderMetrics {
-    pub fn new(scale: f32, padding: u32, alpha: f32, split: bool) -> Self {
+    pub fn new(scale: f32, padding: u32, alpha: f32) -> Self {
         Self {
             key_unit: BASE_KEY_UNIT * scale,
             font_size: BASE_FONT_SIZE * scale,
             padding: padding as f32,
             alpha,
-            split,
         }
     }
 }
@@ -73,19 +69,12 @@ pub fn calculate_dimensions(
     metrics: &RenderMetrics,
 ) -> (u32, u32) {
     let pad = metrics.padding;
-    let split_gap = if metrics.split {
-        SPLIT_GAP_FACTOR * metrics.key_unit
-    } else {
-        0.0
-    };
     let max_width = layout
         .rows
         .iter()
         .map(|row| {
-            let row_key_units: f32 = row.iter().map(|k| k.width).sum();
-            let row_width = row_key_units * metrics.key_unit + (row.len() as f32 - 1.0) * pad;
-            let has_split = metrics.split && row.len() > SPLIT_AFTER_KEY_INDEX;
-            row_width + if has_split { split_gap } else { 0.0 }
+            row.iter().map(|k| k.width * metrics.key_unit).sum::<f32>()
+                + (row.len() as f32 - 1.0) * pad
         })
         .fold(0.0f32, f32::max);
     let keyboard_height = layout.rows.len() as f32 * metrics.key_unit
@@ -126,26 +115,14 @@ fn render_keyboard(
     metrics: &RenderMetrics,
 ) {
     let pad = metrics.padding;
-    let split_gap = if metrics.split {
-        SPLIT_GAP_FACTOR * metrics.key_unit
-    } else {
-        0.0
-    };
     let stats_gap = STATS_GAP * (metrics.key_unit / BASE_KEY_UNIT);
     let mut y = pad + metrics.font_size + stats_gap;
 
     for row in &layout.rows {
         let mut x = pad;
-        let mut split_applied = false;
-
-        for (i, key) in row.iter().enumerate() {
+        for key in row {
             let key_width = key.width * metrics.key_unit;
             let key_height = metrics.key_unit;
-
-            if metrics.split && !split_applied && i >= SPLIT_AFTER_KEY_INDEX {
-                x += split_gap;
-                split_applied = true;
-            }
 
             if !key.label.is_empty() {
                 let is_pressed = key.code != 0 && pressed_keys.contains(&key.code);

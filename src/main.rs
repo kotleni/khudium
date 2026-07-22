@@ -47,6 +47,7 @@ struct App {
     layout_watcher: Arc<Mutex<String>>,
     last_detected_layout: String,
     fx_keys: bool,
+    split_name: Option<String>,
     qh: QueueHandle<App>,
 }
 
@@ -142,9 +143,10 @@ fn main() {
     let initial_layout_name = layout_watcher.lock().unwrap().clone();
     let layout_opts = LayoutOptions {
         fx_keys: args.fx_keys,
+        split: args.split.clone(),
     };
     let kb_layout = layout::Layouts::get(&initial_layout_name, layout_opts);
-    let metrics = RenderMetrics::new(args.scale, args.paddings, args.alpha, args.split);
+    let metrics = RenderMetrics::new(args.scale, args.paddings, args.alpha);
     let font = load_font();
     let (width, height) = calculate_dimensions(&kb_layout, &metrics);
 
@@ -225,6 +227,7 @@ fn main() {
         layout_watcher,
         last_detected_layout: initial_layout_name,
         fx_keys: args.fx_keys,
+        split_name: args.split,
         qh: qh.clone(),
     };
 
@@ -235,6 +238,7 @@ fn main() {
         if new_layout_name != app.last_detected_layout {
             let layout_opts = LayoutOptions {
                 fx_keys: app.fx_keys,
+                split: app.split_name.clone(),
             };
             app.layout = layout::Layouts::get(&new_layout_name, layout_opts);
             let (w, h) = calculate_dimensions(&app.layout, &app.metrics);
