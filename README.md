@@ -24,3 +24,4 @@ khudium --mouse --scale 0.9 --alpha 0.8
 - [Usage](docs/USAGE.md)
 - [Adding layouts](docs/LAYOUTS.md)
 
+<img src="./docs/overlay.png" width="380" alt="Overlay example" />
