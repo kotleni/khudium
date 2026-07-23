@@ -1,25 +1,30 @@
-# khudium
-Anodised keyboard overlay for Wayland.
+<p align="center">
+  <img src="./logo.png" width="120" alt="Khudium logo" />
+</p>
 
-Transparent layer-shell overlay that renders your physical keyboard layout on screen. Highlights pressed keys in real time via evdev. Supports standard keyboards and split ergo boards.
+<h1 align="center">Khudium</h1>
+
+<p align="center">
+  <strong>Khudium</strong> is an anodized keyboard and mouse overlay for Wayland.
+</p>
+
+---
 
 ## Install
+
 ```bash
 cargo install --path .
 ```
 
+---
+
 ## Quick start
+
 ```bash
-khudium
+khudium --mouse --scale 0.9 --alpha 0.8
 ```
 
-## Supported Layouts
-| Standard       | Split          |
-|----------------|----------------|
-| QWERTY         | Lily58         |
-| Dvorak         | Corne          |
-| Colemak        | Cheapino       |
-| Canary         |                |
+---
 
 ## Docs
 - [Usage](docs/USAGE.md)
