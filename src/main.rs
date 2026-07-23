@@ -3,7 +3,6 @@ mod layout;
 mod layout_detect;
 mod mouse;
 mod render;
-mod stats;
 
 use std::collections::HashSet;
 use std::fs::File;
@@ -25,7 +24,6 @@ use cli::{parse_anchor, Args};
 use layout::LayoutOptions;
 use mouse::MouseState;
 use render::{calculate_dimensions, load_font, render_to_buffer, write_pixmap_to_file, RenderMetrics};
-use stats::TypingStats;
 
 struct App {
     running: bool,
@@ -40,7 +38,6 @@ struct App {
     pool_file: Option<File>,
     layout: layout::KeyboardLayout,
     pressed_keys: HashSet<u16>,
-    stats: TypingStats,
     width: u32,
     height: u32,
     font: fontdue::Font,
@@ -201,13 +198,11 @@ fn main() {
     );
 
     let pressed_keys = Arc::new(Mutex::new(HashSet::new()));
-    let stats = Arc::new(Mutex::new(TypingStats::default()));
     let needs_render = Arc::new(AtomicBool::new(true));
 
     let pk = pressed_keys.clone();
-    let st = stats.clone();
     let nr = needs_render.clone();
-    std::thread::spawn(move || render::input_thread(pk, st, nr));
+    std::thread::spawn(move || render::input_thread(pk, nr));
 
     let mouse_state = if args.mouse {
         let ms = Arc::new(Mutex::new(MouseState::default()));
@@ -232,7 +227,6 @@ fn main() {
         pool_file: Some(pool_file),
         layout: kb_layout,
         pressed_keys: HashSet::new(),
-        stats: TypingStats::default(),
         width,
         height,
         font,
@@ -294,18 +288,10 @@ fn main() {
         }
 
         let new_keys = pressed_keys.lock().unwrap().clone();
-        let new_stats = stats.lock().unwrap().clone();
         let keys_changed = new_keys != app.pressed_keys;
-        let stats_changed = new_stats.cpm() != app.stats.cpm() || new_stats.wpm() != app.stats.wpm()
-            || new_stats.chars != app.stats.chars
-            || new_stats.words != app.stats.words;
 
         if keys_changed {
             app.pressed_keys = new_keys;
-            app.needs_render = true;
-        }
-        if stats_changed {
-            app.stats = new_stats;
             app.needs_render = true;
         }
 
@@ -331,7 +317,6 @@ fn main() {
                     &mut pixmap,
                     &app.layout,
                     &app.pressed_keys,
-                    &app.stats,
                     &app.font,
                     &app.metrics,
                     mouse_ref.as_ref(),

@@ -10,11 +10,9 @@ use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Rect, Stroke, Transform};
 
 use crate::layout::KeyboardLayout;
 use crate::mouse::MouseState;
-use crate::stats::TypingStats;
 
 const BASE_KEY_UNIT: f32 = 36.0;
 const BASE_FONT_SIZE: f32 = 12.0;
-const STATS_GAP: f32 = 8.0;
 
 pub struct RenderMetrics {
     pub key_unit: f32,
@@ -81,13 +79,12 @@ pub fn calculate_dimensions(
         .fold(0.0f32, f32::max);
     let keyboard_height = layout.rows.len() as f32 * metrics.key_unit
         + (layout.rows.len() as f32 - 1.0) * pad;
-    let stats_gap = STATS_GAP * (metrics.key_unit / BASE_KEY_UNIT);
     let mouse_height = if mouse_enabled {
         crate::mouse::calculate_mouse_height(metrics)
     } else {
         0.0
     };
-    let total_height = pad + metrics.font_size + stats_gap + mouse_height + keyboard_height + pad;
+    let total_height = pad + mouse_height + keyboard_height + pad;
     (
         (max_width + 2.0 * pad) as u32,
         (total_height + 2.0 * pad) as u32,
@@ -98,16 +95,13 @@ pub fn render_to_buffer(
     pixmap: &mut Pixmap,
     layout: &KeyboardLayout,
     pressed_keys: &HashSet<u16>,
-    stats: &TypingStats,
     font: &fontdue::Font,
     metrics: &RenderMetrics,
     mouse_state: Option<&MouseState>,
 ) {
     pixmap.fill(tiny_skia::Color::TRANSPARENT);
-    render_stats_bar(pixmap, stats, font, metrics);
 
-    let stats_gap = STATS_GAP * (metrics.key_unit / BASE_KEY_UNIT);
-    let mut keyboard_y = metrics.padding + metrics.font_size + stats_gap;
+    let mut keyboard_y = metrics.padding;
 
     if let Some(ms) = mouse_state {
         let mouse_height = crate::mouse::calculate_mouse_height(metrics);
@@ -157,32 +151,6 @@ fn render_keyboard(
         }
         y += metrics.key_unit + pad;
     }
-}
-
-fn render_stats_bar(
-    pixmap: &mut Pixmap,
-    stats: &TypingStats,
-    font: &fontdue::Font,
-    metrics: &RenderMetrics,
-) {
-    let pad = metrics.padding;
-    let text = stats.display_text();
-    let a = (180.0 * metrics.alpha).round() as u8;
-
-    let text_width: f32 = text
-        .chars()
-        .map(|c| font.rasterize(c, metrics.font_size).0.width as f32)
-        .sum();
-
-    draw_text(
-        pixmap,
-        &text,
-        pixmap.width() as f32 - pad - text_width / 2.0,
-        pad + metrics.font_size / 2.0,
-        font,
-        metrics.font_size,
-        Color::from_rgba8(180, 180, 180, a),
-    );
 }
 
 struct KeyStyle<'a> {
@@ -337,7 +305,6 @@ pub fn find_keyboards() -> Vec<Device> {
 
 pub fn input_thread(
     pressed_keys: Arc<Mutex<HashSet<u16>>>,
-    stats: Arc<Mutex<TypingStats>>,
     needs_render: Arc<AtomicBool>,
 ) {
     let mut devices = find_keyboards();
@@ -363,7 +330,6 @@ pub fn input_thread(
                         let mut keys = pressed_keys.lock().unwrap();
                         if pressed {
                             keys.insert(code);
-                            stats.lock().unwrap().on_key_press(code);
                         } else {
                             keys.remove(&code);
                         }
