@@ -1,6 +1,7 @@
 mod cli;
 mod layout;
 mod layout_detect;
+mod mouse;
 mod render;
 mod stats;
 
@@ -22,6 +23,7 @@ use wayland_protocols_wlr::layer_shell::v1::client::{
 
 use cli::{parse_anchor, Args};
 use layout::LayoutOptions;
+use mouse::MouseState;
 use render::{calculate_dimensions, load_font, render_to_buffer, write_pixmap_to_file, RenderMetrics};
 use stats::TypingStats;
 
@@ -49,6 +51,8 @@ struct App {
     fx_keys: bool,
     split_name: Option<String>,
     qh: QueueHandle<App>,
+    mouse_enabled: bool,
+    mouse_state: Option<Arc<Mutex<MouseState>>>,
 }
 
 macro_rules! delegate_noop {
@@ -148,7 +152,7 @@ fn main() {
     let kb_layout = layout::Layouts::get(&initial_layout_name, layout_opts);
     let metrics = RenderMetrics::new(args.scale, args.paddings, args.alpha);
     let font = load_font();
-    let (width, height) = calculate_dimensions(&kb_layout, &metrics);
+    let (width, height) = calculate_dimensions(&kb_layout, &metrics, args.mouse);
 
     let conn = Connection::connect_to_env().expect("Failed to connect to Wayland");
     let (globals, mut event_queue) =
@@ -205,6 +209,16 @@ fn main() {
     let nr = needs_render.clone();
     std::thread::spawn(move || render::input_thread(pk, st, nr));
 
+    let mouse_state = if args.mouse {
+        let ms = Arc::new(Mutex::new(MouseState::default()));
+        let ms_clone = ms.clone();
+        let nr2 = needs_render.clone();
+        std::thread::spawn(move || mouse::mouse_input_thread(ms_clone, nr2));
+        Some(ms)
+    } else {
+        None
+    };
+
     let mut app = App {
         running: true,
         configured: false,
@@ -229,6 +243,8 @@ fn main() {
         fx_keys: args.fx_keys,
         split_name: args.split,
         qh: qh.clone(),
+        mouse_enabled: args.mouse,
+        mouse_state,
     };
 
     while app.running {
@@ -241,7 +257,7 @@ fn main() {
                 split: app.split_name.clone(),
             };
             app.layout = layout::Layouts::get(&new_layout_name, layout_opts);
-            let (w, h) = calculate_dimensions(&app.layout, &app.metrics);
+            let (w, h) = calculate_dimensions(&app.layout, &app.metrics, app.mouse_enabled);
             app.width = w;
             app.height = h;
             app.last_detected_layout = new_layout_name;
@@ -302,6 +318,15 @@ fn main() {
                 &app.pool_file,
             ) {
                 let mut pixmap = Pixmap::new(app.width, app.height).unwrap();
+
+                let mouse_ref = if let Some(ref ms) = app.mouse_state {
+                    let mut state = ms.lock().unwrap();
+                    mouse::decay_mouse_state(&mut state);
+                    Some(state.clone())
+                } else {
+                    None
+                };
+
                 render_to_buffer(
                     &mut pixmap,
                     &app.layout,
@@ -309,6 +334,7 @@ fn main() {
                     &app.stats,
                     &app.font,
                     &app.metrics,
+                    mouse_ref.as_ref(),
                 );
                 write_pixmap_to_file(&pixmap, file);
 

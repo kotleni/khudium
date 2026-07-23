@@ -27,6 +27,10 @@ pub struct Args {
     /// Split keyboard layout (lily58, corne, cheapino)
     #[arg(long)]
     pub split: Option<String>,
+
+    /// Show mouse overlay above the keyboard
+    #[arg(long, default_value = "false")]
+    pub mouse: bool,
 }
 
 pub fn parse_anchor(place: &str) -> zwlr_layer_surface_v1::Anchor {

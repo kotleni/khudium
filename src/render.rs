@@ -9,6 +9,7 @@ use evdev::{Device, InputEventKind};
 use tiny_skia::{Color, Paint, PathBuilder, Pixmap, Rect, Stroke, Transform};
 
 use crate::layout::KeyboardLayout;
+use crate::mouse::MouseState;
 use crate::stats::TypingStats;
 
 const BASE_KEY_UNIT: f32 = 36.0;
@@ -67,6 +68,7 @@ pub fn load_font() -> fontdue::Font {
 pub fn calculate_dimensions(
     layout: &KeyboardLayout,
     metrics: &RenderMetrics,
+    mouse_enabled: bool,
 ) -> (u32, u32) {
     let pad = metrics.padding;
     let max_width = layout
@@ -80,7 +82,12 @@ pub fn calculate_dimensions(
     let keyboard_height = layout.rows.len() as f32 * metrics.key_unit
         + (layout.rows.len() as f32 - 1.0) * pad;
     let stats_gap = STATS_GAP * (metrics.key_unit / BASE_KEY_UNIT);
-    let total_height = pad + metrics.font_size + stats_gap + keyboard_height + pad;
+    let mouse_height = if mouse_enabled {
+        crate::mouse::calculate_mouse_height(metrics)
+    } else {
+        0.0
+    };
+    let total_height = pad + metrics.font_size + stats_gap + mouse_height + keyboard_height + pad;
     (
         (max_width + 2.0 * pad) as u32,
         (total_height + 2.0 * pad) as u32,
@@ -94,10 +101,21 @@ pub fn render_to_buffer(
     stats: &TypingStats,
     font: &fontdue::Font,
     metrics: &RenderMetrics,
+    mouse_state: Option<&MouseState>,
 ) {
     pixmap.fill(tiny_skia::Color::TRANSPARENT);
-    render_keyboard(pixmap, layout, pressed_keys, font, metrics);
     render_stats_bar(pixmap, stats, font, metrics);
+
+    let stats_gap = STATS_GAP * (metrics.key_unit / BASE_KEY_UNIT);
+    let mut keyboard_y = metrics.padding + metrics.font_size + stats_gap;
+
+    if let Some(ms) = mouse_state {
+        let mouse_height = crate::mouse::calculate_mouse_height(metrics);
+        crate::mouse::render_mouse(pixmap, ms, font, metrics, keyboard_y);
+        keyboard_y += mouse_height;
+    }
+
+    render_keyboard(pixmap, layout, pressed_keys, font, metrics, keyboard_y);
 }
 
 pub fn write_pixmap_to_file(pixmap: &Pixmap, file: &File) {
@@ -113,10 +131,10 @@ fn render_keyboard(
     pressed_keys: &HashSet<u16>,
     font: &fontdue::Font,
     metrics: &RenderMetrics,
+    y_start: f32,
 ) {
     let pad = metrics.padding;
-    let stats_gap = STATS_GAP * (metrics.key_unit / BASE_KEY_UNIT);
-    let mut y = pad + metrics.font_size + stats_gap;
+    let mut y = y_start;
 
     for row in &layout.rows {
         let mut x = pad;
