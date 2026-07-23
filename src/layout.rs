@@ -124,16 +124,16 @@ const CANARY: LayoutDef = LayoutDef {
         labels: ["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="],
     },
     alpha: AlphaRows {
-        top: ["w", "l", "y", "p", "k", "z", "x", "o", "u", ";"],
-        home: ["c", "r", "s", "t", "b", "f", "n", "e", "i"],
-        bottom: ["j", "v", "d", "g", "q", "m", "h"],
+        top: ["W", "L", "Y", "P", "K", "Z", "X", "O", "U", ";"],
+        home: ["C", "R", "S", "T", "B", "F", "N", "E", "I"],
+        bottom: ["J", "V", "D", "G", "Q", "M", "H"],
         top_punct: [
             PunctKey { label: "[", code: 26 },
             PunctKey { label: "]", code: 27 },
             PunctKey { label: "\\", code: 43 },
         ],
         home_punct: [
-            PunctKey { label: "a", code: 39 },
+            PunctKey { label: "A", code: 39 },
             PunctKey { label: "'", code: 40 },
         ],
         bottom_punct: [
